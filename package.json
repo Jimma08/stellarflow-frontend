@@ -15,6 +15,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node scripts/test-lang-cache.js && node scripts/test-yield-benchmark.js",
+    "test:storage": "node scripts/test-storage.js && node scripts/test-storage-sanitizer.js",
     "test:e2e": "playwright test",
     "test:visual": "playwright test e2e/visual.spec.ts",
     "test:visual:update": "playwright test e2e/visual.spec.ts --update-snapshots",
