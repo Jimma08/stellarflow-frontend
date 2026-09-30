@@ -9,6 +9,7 @@ import { VolumeAnomalyAlert } from "@/components/amm/VolumeAnomalyAlert";
 export interface Pool {
   id: string;
   pair: string;
+  address: string;
   tvl: number;
   volume24h: number;
   apy: number;
