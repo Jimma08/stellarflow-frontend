@@ -10,6 +10,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Script from "next/script";
 import SvgSprite from "@/components/icons/SvgSprite";
 import { SecurityBanner } from "@/components/navigation/SecurityBanner";
+import MobileBottomNav from "@/components/navigation/MobileBottomNav";
 import { PWAInstallGuideModal } from "@/components/pwa/PWAInstallGuideModal";
 import { OfflineBanner } from "@/components/pwa/OfflineBanner";
 import { SwUpdateBanner } from "@/components/pwa/SwUpdateBanner";
@@ -23,10 +24,12 @@ import { headers } from "next/headers";
 import { AccessibilityProvider } from "@/context/AccessibilityContext";
 import { HapticProvider } from "@/components/providers/HapticProvider";
 import { PushNotificationRoot } from "@/components/notifications";
+import {
+  MultisigNotificationBadge,
+  MultisigNotificationProvider,
+} from "@/components/multisig";
 import { RpcFailoverMonitor } from "./components/providers/RpcFailoverMonitor";
-import { NetworkProvider } from "./components/providers/NetworkProvider";
 import { CommandPalette } from "@/components/command-palette";
-import { KeyboardShortcutsRoot } from "@/components/keyboard-shortcuts/KeyboardShortcutsRoot";
 import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
 import { MobileBottomNav } from "@/components/navigation";
 
@@ -38,11 +41,11 @@ export const metadata: Metadata = {
   themeColor: "#39ff14",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "StellarFlow",
   },
   icons: {
-    apple: "/apple-touch-icon.png",
+    apple: "/icon-192.svg",
   },
   other: {
     "mobile-web-app-capable": "yes",
@@ -54,9 +57,6 @@ import { subresourceRecoveryScript } from "@/utils/subresourceRecovery";
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode; }>) {
-  // The CSP nonce is injected by middleware, which only runs on the Node
-  // server. Static export (`output: export`) has no middleware, and calling
-  // `headers()` there would make every route (including /_not-found) dynamic.
   const nonce =
     process.env.NEXT_OUTPUT_MODE === "export"
       ? undefined
@@ -72,11 +72,15 @@ export default async function RootLayout({
          * The correct "dark" or "light" class is applied to <html> before the
          * first paint, eliminating any theme flash on hard-reload or cold start.
          *
+         * It also restores the stored high-contrast (WCAG AAA) preference —
+         * again falling back to the OS `prefers-contrast: more` signal — so the
+         * boosted palette is on <html> before paint and never flashes.
+         *
          * Must be a plain <script> tag (not next/script) so it blocks parsing.
          */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var s=localStorage.getItem('stellarflow-theme');var d=s==='dark'||(!s&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);document.documentElement.classList.toggle('light',!d);}catch(e){}})();`,
+            __html: `(function(){try{var r=document.documentElement;var s=localStorage.getItem('stellarflow-theme');var d=s==='dark'||(!s&&window.matchMedia('(prefers-color-scheme: dark)').matches);r.classList.toggle('dark',d);r.classList.toggle('light',!d);var c=localStorage.getItem('stellarflow-high-contrast');var h=c===null?window.matchMedia('(prefers-contrast: more)').matches:c==='true';r.classList.toggle('high-contrast',h);r.dataset.contrast=h?'high':'normal';}catch(e){}})();`,
           }}
         />
         {/* Fallback background colour while the script above runs. */}
@@ -113,14 +117,16 @@ export default async function RootLayout({
         {/* PWA: apple-touch-icon for iOS home-screen bookmarks */}
         <link
           rel="apple-touch-icon"
-          href="/apple-touch-icon.png"
-          sizes="180x180"
+          href="/icon-192.svg"
+          sizes="192x192"
         />
         <Script
           id="polyfill-loader"
           nonce={nonce}
           strategy="afterInteractive"
           fetchPriority="low"
+          integrity="sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC"
+          crossOrigin="anonymous"
           dangerouslySetInnerHTML={{
             __html: `
               if (!('IntersectionObserver' in window) || 
@@ -130,6 +136,8 @@ export default async function RootLayout({
                 console.info('StellarFlow: Modern features missing. Loading on-demand polyfills...');
                 var js = document.createElement('script');
                 js.src = 'https://polyfill-library.fastly.dev/v3/polyfill.min.js?features=default,IntersectionObserver,ResizeObserver,fetch,Promise';
+                js.integrity = 'sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC';
+                js.crossOrigin = 'anonymous';
                 document.head.appendChild(js);
               }
             `
@@ -143,9 +151,6 @@ export default async function RootLayout({
         <OfflineBanner />
         <CspReporterInit />
         <SvgSprite />
-        <div className="fixed top-3 right-3 z-40">
-          <SecurityBanner />
-        </div>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -163,14 +168,25 @@ export default async function RootLayout({
                         <PushNotificationRoot>
                           <ErrorBoundary tags={{ section: "root" }}>
                             <WalletSessionProvider>
-                              <SessionTimeoutManager>
-                                <ScreenLockProvider>
-                                    <InactivityLockGuard>
-                                      {children}
-                                      <MobileBottomNav />
-                                    </InactivityLockGuard>
-                                </ScreenLockProvider>
-                              </SessionTimeoutManager>
+                              {/*
+                                Co-signer alerts (#962) live here so the
+                                top-bar badge can read the connected wallet
+                                and the pending-signature queue from anywhere.
+                              */}
+                              <MultisigNotificationProvider>
+                                <SessionTimeoutManager>
+                                  <ScreenLockProvider>
+                                      <InactivityLockGuard>
+                                        <div className="fixed top-3 right-3 z-40 flex items-center gap-2">
+                                          <MultisigNotificationBadge />
+                                          <SecurityBanner />
+                                        </div>
+                                        {children}
+                                        <MobileBottomNav />
+                                      </InactivityLockGuard>
+                                  </ScreenLockProvider>
+                                </SessionTimeoutManager>
+                              </MultisigNotificationProvider>
                             </WalletSessionProvider>
                           </ErrorBoundary>
                         </PushNotificationRoot>
@@ -178,7 +194,6 @@ export default async function RootLayout({
                       <SwUpdateBanner />
                       <PWAInstallGuideModal />
                       <CommandPalette />
-                      <KeyboardShortcutsRoot />
                   </ProgressBarProvider>
                 </QueryProvider>
               </UserProvider>
@@ -190,4 +205,3 @@ export default async function RootLayout({
     </html>
   );
 }
-
