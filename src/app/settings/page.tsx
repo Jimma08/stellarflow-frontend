@@ -20,8 +20,7 @@ import { useZKProofLoader } from '@/components/zk/useZKProofLoader';
 import { useThemeContext, type Theme } from '@/context/ThemeContext';
 import { CustomTokenSettings } from '@/components/tokens/CustomTokenSettings';
 import { NotificationPreferencesPanel } from '@/components/settings/NotificationPreferencesPanel';
-import { KeyboardShortcutsSettings } from '@/components/keyboard-shortcuts/KeyboardShortcutsSettings';
-import { NetworkProvider, useNetwork, useNetworkActions } from '@/app/components/providers/NetworkProvider';
+import { LocalStorageSettings } from '@/components/settings/LocalStorageSettings';
 
 interface Settings {
   emailReports: boolean;
@@ -272,6 +271,8 @@ function SettingsContent() {
         <CustomTokenSettings />
 
         <KeyboardShortcutsSettings />
+
+        <LocalStorageSettings />
 
         <section className="bg-[#161b22] border border-gray-800 rounded-xl p-6">
           <div className="flex justify-between items-center mb-6">

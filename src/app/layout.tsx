@@ -18,6 +18,7 @@ import { ScreenLockProvider } from "@/components/security/ScreenLockModal";
 import { SessionTimeoutManager } from "@/components/security/SessionTimeoutManager";
 import { InactivityLockGuard } from "@/components/security/InactivityLockGuard";
 import { CspReporterInit } from "@/components/security/CspReporterInit";
+import { StorageSanitizer } from "@/components/providers/StorageSanitizer";
 import { WalletSessionProvider } from "@/context/WalletContext";
 import { GasFeeProvider } from "@/components/gas-fee";
 import { headers } from "next/headers";
@@ -150,6 +151,7 @@ export default async function RootLayout({
         <GlobalErrorBoundary>
         <OfflineBanner />
         <CspReporterInit />
+        <StorageSanitizer />
         <SvgSprite />
         <ThemeProvider
           attribute="class"
