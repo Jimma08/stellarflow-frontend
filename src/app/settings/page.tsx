@@ -1,8 +1,24 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Icon from '@/components/icons/Icon';
 import { ICON_IDS } from '@/components/icons/iconIds';
+import { useDebounce } from '../hooks/useDebounce';
+import { useRafThrottle } from '../hooks/useRafThrottle';
+import { openPushPreferencesModal } from '@/components/notifications';
+import { loadPreferences } from '@/services/notifications';
+import { useTransactionAudio } from '@/hooks/useTransactionAudio';
+import { useHapticFeedback } from '@/hooks/useHapticFeedback';
+import { useScreenLock, ScreenLockModal } from '@/components/security/ScreenLockModal';
+import { AutoLockSettings } from '@/components/security/AutoLockSettings';
+import { useTransactionHistoryWithFallback } from '@/app/hooks/useTransactionHistory';
+import { exportTransactionsToCsv, type TaxPlatform } from '@/utils/csvExport';
+import { useToast } from '@/components/ui/ToastQueue';
+import { useDashboardCustomizer } from '@/components/dashboard/useDashboardCustomizer';
+import { WalletNonceResync } from '@/components/wallet/WalletNonceResync';
+import { useZKProofLoader } from '@/components/zk/useZKProofLoader';
+import { useThemeContext, type Theme } from '@/context/ThemeContext';
+import { CustomTokenSettings } from '@/components/tokens/CustomTokenSettings';
 import { NotificationPreferencesPanel } from '@/components/settings/NotificationPreferencesPanel';
 import { LocalStorageSettings } from '@/components/settings/LocalStorageSettings';
 
@@ -25,15 +41,13 @@ const TOGGLE_STYLES = {
   },
 };
 
-export default function SettingsPage() {
+function SettingsContent() {
   const [showKey, setShowKey] = useState(false);
   const [screenLockModalOpen, setScreenLockModalOpen] = useState(false);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Custom Horizon endpoint form
   const { horizonUrl, customHorizonUrl } = useNetwork();
-  const { setCustomHorizonEndpoint, resetToDefaultEndpoint } =
-    useNetworkActions();
+  const { setCustomHorizonEndpoint, resetToDefaultEndpoint } = useNetworkActions();
   const [inputUrl, setInputUrl] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -346,14 +360,13 @@ export default function SettingsPage() {
                 )}
               </div>
             </form>
-      </div>
-
-      <NotificationPreferencesDrawer 
-        isOpen={isDrawerOpen} 
-        onClose={() => setIsDrawerOpen(false)} 
-      />
+          </div>
     </div>
   );
+}
+
+export default function SettingsPage() {
+  return <NetworkProvider><SettingsContent /></NetworkProvider>;
 }
 
 function ToggleItem({ icon, title, description, enabled, onToggle, onConfigure }: { icon: React.ReactNode, title: string, description: string, enabled: boolean, onToggle: () => void, onConfigure?: () => void }) {
@@ -416,4 +429,3 @@ function MonitorIcon({ className = "" }: { className?: string }) {
     </svg>
   );
 }
-
